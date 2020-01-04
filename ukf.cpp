@@ -22,10 +22,10 @@ UKF::UKF() {
   P_ = MatrixXd(5, 5);
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 0.2;//30;
+  std_a_ = 0;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 0.2;//30;
+  std_yawdd_ = 0;
   
   /**
    * DO NOT MODIFY measurement noise values below.
@@ -125,13 +125,13 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
 
   }else{
 
-    double delta_t = (time_us_ - meas_package.timestamp_) / 1000000; //!convert to seconds
+    double delta_t = (meas_package.timestamp_ - time_us_) / 1000000; //!convert to seconds
     Prediction(delta_t);
 
     if(meas_package.sensor_type_ == MeasurementPackage::LASER){    
-      UpdateLidar(meas_package);
+       UpdateLidar(meas_package);
     }else if(meas_package.sensor_type_ == MeasurementPackage::RADAR){
-      UpdateRadar(meas_package);
+       UpdateRadar(meas_package);
     } 
 
   }
@@ -246,8 +246,6 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
   RLaser << (std_laspx_* std_laspx_), 0,
             0, (std_laspy_*std_laspy_);
 
-  
-  /*
   VectorXd ZCurr = VectorXd(2);
   ZCurr << meas_package.raw_measurements_[0],
            meas_package.raw_measurements_[1];
@@ -266,15 +264,15 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
     z_pred += weights_(i) * Zsig.col(i);
   }
 
-  
   MatrixXd S = MatrixXd(2,2);
   S.fill(0.0);
+
   for(int i=0; i<(2*n_aug_+1); ++i){
     VectorXd Zdiff = Zsig.col(i) - z_pred;
     S += weights_(i) * Zdiff * Zdiff.transpose();
   }
 
-  S += RLaser;
+  S = S + RLaser;
 
   MatrixXd Tc = MatrixXd(n_x_, 2);
   Tc.fill(0.0);
@@ -304,36 +302,6 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
 
   //! update covariance matrix
   P_ = P_ - K * S * K.transpose();
-  */
-  
-  MatrixXd HLaser = MatrixXd (2,5);
-  HLaser << 1,0,0,0,0,
-            0,1,0,0,0;
-  
-  VectorXd z_predicted = HLaser * x_;
-
-  x_ << meas_package.raw_measurements_[0],
-        meas_package.raw_measurements_[1],
-        0,
-        0,
-        0;
-
-  VectorXd z = VectorXd(2);
-  z << meas_package.raw_measurements_[0],
-       meas_package.raw_measurements_[1];
-
-  VectorXd y = z - z_predicted;
-
-  //get Kalman gain
-  MatrixXd S = HLaser * P_ * HLaser.transpose() + RLaser;
-  MatrixXd K = P_ * HLaser.transpose() * S.inverse();
-
-  //Update state 
-  x_ = x_ + K * y;
-  
-  //Update covariance matrix
-  MatrixXd I = MatrixXd::Identity(x_.size(), x_.size());
-  P_ = (I - K * HLaser) * P_;
     
 }
 
